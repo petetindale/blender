@@ -2,9 +2,12 @@ import bpy
 import math
 import numpy as np
 
-total_height = 5.5
-circle_radius = 4.3
+total_height = 6.0
+circle_radius = 3.3
+inner_radius = 2.1
+hole_radius = 0.6 
 row_height = 0.05
+wall_thickness = 0.5
 angle_inc = 1
 pcv = int(360/angle_inc) + 1
 
@@ -23,15 +26,15 @@ def circle(radius, location):
 
 
 def adjust_radius(zpos, max_height, curr_radius):
-    offset = 0.5
-    adjust_height = 1.3
+    offset = wall_thickness
+    adjust_radius = circle_radius - inner_radius
     
     half_height = max_height/2
     
     pos_radius = curr_radius
     if zpos < offset : pos_radius = circle_radius
     elif zpos > max_height - offset: pos_radius = circle_radius
-    else : pos_radius = circle_radius - adjust_height + ((zpos - half_height) ** 2 / ((half_height+offset)**2 /2))
+    else : pos_radius = inner_radius + ((zpos - half_height) ** 2 / ((half_height-offset)**2)) * adjust_radius
     return pos_radius
 
 def cylinder(radius, height, adjust, per_circle_verticies):
@@ -57,7 +60,7 @@ def cylinder(radius, height, adjust, per_circle_verticies):
 
 # Create two cylinders.
 (verts1, faces1) = cylinder(circle_radius, total_height, 1, pcv)
-(verts2, faces2) = cylinder(0.6, total_height, 0, pcv)
+(verts2, faces2) = cylinder(hole_radius, total_height, 0, pcv)
 
 
 # Combine two lists of verticies from two cylinders
@@ -94,22 +97,26 @@ objs = [ob for ob in bpy.context.scene.objects if ob.type in ('MESH')]
 bpy.ops.object.delete({"selected_objects": objs})
 
 # Set units to cms
-bpy.context.scene.unit_settings.scale_length = 0.01
+bpy.context.scene.unit_settings.scale_length = 1
+bpy.context.scene.unit_settings.length_unit = 'CENTIMETERS'
+
 
 # Create mesh and add verticies and faces.
 new_mesh = bpy.data.meshes.new("new_mesh")
 new_mesh.from_pydata(verts, [], faces)
 new_mesh.update()
 
-# Mesh in order to get watertight
+
 new_object = bpy.data.objects.new("roller", new_mesh)
-remesh = new_object.modifiers.new('Remesh', 'REMESH')
-remesh.voxel_size = 0.01
+
+# Mesh in order to get watertight
+#remesh = new_object.modifiers.new('Remesh', 'REMESH')
+#remesh.voxel_size = 0.01
 
 # Smooth to remove any artefacts
-corrsmo = new_object.modifiers.new('CorrectiveSmooth', 'CORRECTIVE_SMOOTH')
-corrsmo.use_only_smooth = True
-corrsmo.iterations = 15
+#corrsmo = new_object.modifiers.new('CorrectiveSmooth', 'CORRECTIVE_SMOOTH')
+#corrsmo.use_only_smooth = True
+#corrsmo.iterations = 15
 
 # Set View
 view_layer = bpy.context.view_layer
